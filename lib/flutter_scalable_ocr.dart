@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 // import 'package:satya_textocr/src_path/SatyaTextKit.dart';
 import './text_recognizer_painter.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -20,7 +21,8 @@ class ScalableOCR extends StatefulWidget {
       this.boxHeight,
       required this.getScannedText,
       this.getRawData,
-      this.paintboxCustom})
+      this.paintboxCustom,
+      this.langageScript})
       : super(key: key);
 
   /// Offset on recalculated image left
@@ -47,12 +49,14 @@ class ScalableOCR extends StatefulWidget {
   /// Narower box paint
   final Paint? paintboxCustom;
 
+  final LangageScript? langageScript;
+
   @override
   ScalableOCRState createState() => ScalableOCRState();
 }
 
 class ScalableOCRState extends State<ScalableOCR> {
-  final TextRecognizer _textRecognizer = TextRecognizer();
+  late final TextRecognizer _textRecognizer;
   final cameraPrev = GlobalKey();
   final thePainter = GlobalKey();
 
@@ -60,10 +64,12 @@ class ScalableOCRState extends State<ScalableOCR> {
   bool _isBusy = false;
   bool converting = false;
   CustomPaint? customPaint;
+
   // String? _text;
   CameraController? _controller;
   late List<CameraDescription> _cameras;
   double zoomLevel = 3.0, minZoomLevel = 0.0, maxZoomLevel = 10.0;
+
   // Counting pointers (number of user fingers on screen)
   final double _minAvailableZoom = 1.0;
   final double _maxAvailableZoom = 10.0;
@@ -76,6 +82,7 @@ class ScalableOCRState extends State<ScalableOCR> {
   @override
   void initState() {
     super.initState();
+    _textRecognizer = TextRecognizer(script: _scriptConvert(widget.langageScript));
     startLiveFeed();
   }
 
@@ -109,6 +116,21 @@ class ScalableOCRState extends State<ScalableOCR> {
             ],
           ),
         ));
+  }
+
+  _scriptConvert(LangageScript? lang) {
+    switch (lang) {
+      case LangageScript.chinese:
+        return TextRecognitionScript.chinese;
+      case LangageScript.devanagiri:
+        return TextRecognitionScript.devanagiri;
+      case LangageScript.japanese:
+        return TextRecognitionScript.japanese;
+      case LangageScript.korean:
+        return TextRecognitionScript.korean;
+      default:
+        return TextRecognitionScript.latin;
+    }
   }
 
   // Body of live camera stream
@@ -338,4 +360,12 @@ class ScalableOCRState extends State<ScalableOCR> {
       }
     });
   }
+}
+
+enum LangageScript{
+  latin,
+  chinese,
+  devanagiri,
+  japanese,
+  korean,
 }
