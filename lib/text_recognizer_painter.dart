@@ -15,7 +15,7 @@ class TextRecognizerPainter extends CustomPainter {
         this.boxTopOff = 2,
         this.getRawData,
         this.paintboxCustom,
-        this.isLiveFeed
+        required this.isLiveFeed
       });
 
   /// ML kit recognizer
