@@ -20,6 +20,7 @@ class ScalableOCR extends StatefulWidget {
       this.boxTopOff = 2.7,
       this.boxHeight,
       required this.getScannedText,
+        this.isLiveFeed,
       this.getRawData,
       this.paintboxCustom,
       this.langageScript})
@@ -46,6 +47,8 @@ class ScalableOCR extends StatefulWidget {
   /// Get raw data from scanned image
   final Function? getRawData;
 
+  final bool? isLiveFeed;
+
   /// Narower box paint
   final Paint? paintboxCustom;
 
@@ -64,6 +67,7 @@ class ScalableOCRState extends State<ScalableOCR> {
   bool _isBusy = false;
   bool converting = false;
   CustomPaint? customPaint;
+  late bool _isLiveFeed;
 
   // String? _text;
   CameraController? _controller;
@@ -82,6 +86,7 @@ class ScalableOCRState extends State<ScalableOCR> {
   @override
   void initState() {
     super.initState();
+    _isLiveFeed = widget.isLiveFeed ?? true;
     _textRecognizer = TextRecognizer(script: _scriptConvert(widget.langageScript));
     startLiveFeed();
   }
@@ -325,7 +330,7 @@ class ScalableOCRState extends State<ScalableOCR> {
     final recognizedText = await _textRecognizer.processImage(inputImage);
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null &&
-        cameraPrev.currentContext != null) {
+        cameraPrev.currentContext != null && _isLiveFeed) {
       final RenderBox renderBox =
           cameraPrev.currentContext?.findRenderObject() as RenderBox;
 
