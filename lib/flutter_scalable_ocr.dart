@@ -330,7 +330,7 @@ class ScalableOCRState extends State<ScalableOCR> {
     final recognizedText = await _textRecognizer.processImage(inputImage);
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null &&
-        cameraPrev.currentContext != null && _isLiveFeed) {
+        cameraPrev.currentContext != null) {
       final RenderBox renderBox =
           cameraPrev.currentContext?.findRenderObject() as RenderBox;
 
@@ -340,7 +340,7 @@ class ScalableOCRState extends State<ScalableOCR> {
           inputImage.metadata!.rotation,
           renderBox, (value) {
         widget.getScannedText(value);
-      }, getRawData: (value) {
+      }, isLiveFeed: _isLiveFeed, getRawData: (value) {
         if (widget.getRawData != null) {
           widget.getRawData!(value);
         }
