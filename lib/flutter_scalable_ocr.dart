@@ -19,11 +19,14 @@ class ScalableOCR extends StatefulWidget {
         this.boxTopOff = 2.7,
         this.boxHeight,
         required this.getScannedText,
+        this.isLiveFeed,
         this.getRawData,
         this.paintboxCustom,
         this.cameraSelection = 0,
         this.torchOn,
-        this.lockCamera = true})
+        this.lockCamera = true,
+        this.langageScript
+      })
       : super(key: key);
 
   /// Offset on recalculated image left
@@ -59,12 +62,16 @@ class ScalableOCR extends StatefulWidget {
   /// Lock camera orientation
   final bool lockCamera;
 
+  final bool? isLiveFeed;
+
+  final LangageScript? langageScript;
+
   @override
   ScalableOCRState createState() => ScalableOCRState();
 }
 
 class ScalableOCRState extends State<ScalableOCR> {
-  final TextRecognizer _textRecognizer = TextRecognizer();
+  late final TextRecognizer _textRecognizer;
   final cameraPrev = GlobalKey();
   final thePainter = GlobalKey();
 
@@ -72,6 +79,8 @@ class ScalableOCRState extends State<ScalableOCR> {
   bool _isBusy = false;
   bool converting = false;
   CustomPaint? customPaint;
+  late bool _isLiveFeed;
+
   // String? _text;
   CameraController? _controller;
   late List<CameraDescription> _cameras;
@@ -88,6 +97,8 @@ class ScalableOCRState extends State<ScalableOCR> {
   @override
   void initState() {
     super.initState();
+    _isLiveFeed = widget.isLiveFeed ?? true;
+    _textRecognizer = TextRecognizer(script: _scriptConvert(widget.langageScript));
     startLiveFeed();
   }
 
@@ -375,7 +386,7 @@ class ScalableOCRState extends State<ScalableOCR> {
           inputImage.metadata!.rotation,
           renderBox, (value) {
         widget.getScannedText(value);
-      }, getRawData: (value) {
+      },isLiveFeed: _isLiveFeed,  getRawData: (value) {
         if (widget.getRawData != null) {
           widget.getRawData!(value);
         }
@@ -400,4 +411,27 @@ class ScalableOCRState extends State<ScalableOCR> {
       }
     });
   }
+
+  _scriptConvert(LangageScript? lang) {
+    switch (lang) {
+      case LangageScript.chinese:
+        return TextRecognitionScript.chinese;
+      case LangageScript.devanagiri:
+        return TextRecognitionScript.devanagiri;
+      case LangageScript.japanese:
+        return TextRecognitionScript.japanese;
+      case LangageScript.korean:
+        return TextRecognitionScript.korean;
+      default:
+        return TextRecognitionScript.latin;
+    }
+  }
+}
+
+enum LangageScript{
+  latin,
+  chinese,
+  devanagiri,
+  japanese,
+  korean,
 }
