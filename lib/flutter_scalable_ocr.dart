@@ -1,29 +1,29 @@
 library flutter_scalable_ocr;
 
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-// import 'package:satya_textocr/src_path/SatyaTextKit.dart';
+import 'package:flutter/services.dart';
 import './text_recognizer_painter.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:camera/camera.dart';
 
-// import 'package:satya_textocr/satya_textocr.dart';
 class ScalableOCR extends StatefulWidget {
   const ScalableOCR(
       {Key? key,
-      this.boxLeftOff = 4,
-      this.boxRightOff = 4,
-      this.boxBottomOff = 2.7,
-      this.boxTopOff = 2.7,
-      this.boxHeight,
-      required this.getScannedText,
-        this.isLiveFeed,
-      this.getRawData,
-      this.paintboxCustom,
-      this.langageScript})
+        this.boxLeftOff = 4,
+        this.boxRightOff = 4,
+        this.boxBottomOff = 2.7,
+        this.boxTopOff = 2.7,
+        this.boxHeight,
+        required this.getScannedText,
+        this.getRawData,
+        this.paintboxCustom,
+        this.cameraSelection = 0,
+        this.torchOn,
+        this.lockCamera = true})
       : super(key: key);
 
   /// Offset on recalculated image left
@@ -38,7 +38,7 @@ class ScalableOCR extends StatefulWidget {
   /// Offset on recalculated image top
   final double boxTopOff;
 
-  /// Height of narowed image
+  /// Height of narrowed image
   final double? boxHeight;
 
   /// Function to get scanned text as a string
@@ -47,19 +47,24 @@ class ScalableOCR extends StatefulWidget {
   /// Get raw data from scanned image
   final Function? getRawData;
 
-  final bool? isLiveFeed;
-
-  /// Narower box paint
+  /// Narrower box paint
   final Paint? paintboxCustom;
 
-  final LangageScript? langageScript;
+  /// Function to toggle torch
+  final bool? torchOn;
+
+  /// Camera Selection
+  final int cameraSelection;
+
+  /// Lock camera orientation
+  final bool lockCamera;
 
   @override
   ScalableOCRState createState() => ScalableOCRState();
 }
 
 class ScalableOCRState extends State<ScalableOCR> {
-  late final TextRecognizer _textRecognizer;
+  final TextRecognizer _textRecognizer = TextRecognizer();
   final cameraPrev = GlobalKey();
   final thePainter = GlobalKey();
 
@@ -67,13 +72,10 @@ class ScalableOCRState extends State<ScalableOCR> {
   bool _isBusy = false;
   bool converting = false;
   CustomPaint? customPaint;
-  late bool _isLiveFeed;
-
   // String? _text;
   CameraController? _controller;
   late List<CameraDescription> _cameras;
   double zoomLevel = 3.0, minZoomLevel = 0.0, maxZoomLevel = 10.0;
-
   // Counting pointers (number of user fingers on screen)
   final double _minAvailableZoom = 1.0;
   final double _maxAvailableZoom = 10.0;
@@ -86,14 +88,12 @@ class ScalableOCRState extends State<ScalableOCR> {
   @override
   void initState() {
     super.initState();
-    _isLiveFeed = widget.isLiveFeed ?? true;
-    _textRecognizer = TextRecognizer(script: _scriptConvert(widget.langageScript));
     startLiveFeed();
   }
 
   @override
   void dispose() {
-    _stopLiveFeed();
+    stopLiveFeed();
     super.dispose();
   }
 
@@ -106,36 +106,21 @@ class ScalableOCRState extends State<ScalableOCR> {
           child: Column(
             children: [
               _controller == null ||
-                      _controller?.value == null ||
-                      _controller?.value.isInitialized == false
+                  _controller?.value == null ||
+                  _controller?.value.isInitialized == false
                   ? Container(
-                      width: MediaQuery.of(context).size.width,
-                      height: sizeH * 19,
-                      decoration: BoxDecoration(
-                        color: Colors.grey,
-                        borderRadius: BorderRadius.circular(17),
-                      ),
-                    )
+                width: MediaQuery.of(context).size.width,
+                height: widget.boxHeight ?? sizeH * 19,
+                decoration: BoxDecoration(
+                  color: Colors.grey,
+                  borderRadius: BorderRadius.circular(17),
+                ),
+              )
                   : _liveFeedBody(),
               SizedBox(height: sizeH * 2),
             ],
           ),
         ));
-  }
-
-  _scriptConvert(LangageScript? lang) {
-    switch (lang) {
-      case LangageScript.chinese:
-        return TextRecognitionScript.chinese;
-      case LangageScript.devanagiri:
-        return TextRecognitionScript.devanagiri;
-      case LangageScript.japanese:
-        return TextRecognitionScript.japanese;
-      case LangageScript.korean:
-        return TextRecognitionScript.korean;
-      default:
-        return TextRecognitionScript.latin;
-    }
   }
 
   // Body of live camera stream
@@ -155,7 +140,7 @@ class ScalableOCRState extends State<ScalableOCR> {
             Center(
               child: SizedBox(
                 height:
-                    widget.boxHeight ?? MediaQuery.of(context).size.height / 5,
+                widget.boxHeight ?? MediaQuery.of(context).size.height / 5,
                 key: cameraPrev,
                 child: AspectRatio(
                   aspectRatio: 1 / previewAspectRatio,
@@ -163,14 +148,14 @@ class ScalableOCRState extends State<ScalableOCR> {
                     behavior: HitTestBehavior.translucent,
                     child: ClipRRect(
                       borderRadius:
-                          const BorderRadius.all(Radius.circular(16.0)),
+                      const BorderRadius.all(Radius.circular(16.0)),
                       child: Transform.scale(
                         scale: cameraController.value.aspectRatio /
                             previewAspectRatio,
                         child: Center(
                           child: CameraPreview(cameraController, child:
-                              LayoutBuilder(builder: (BuildContext context,
-                                  BoxConstraints constraints) {
+                          LayoutBuilder(builder: (BuildContext context,
+                              BoxConstraints constraints) {
                             maxWidth = constraints.maxWidth;
                             maxHeight = constraints.maxHeight;
 
@@ -192,17 +177,17 @@ class ScalableOCRState extends State<ScalableOCR> {
             if (customPaint != null)
               LayoutBuilder(
                   builder: (BuildContext context, BoxConstraints constraints) {
-                maxWidth = constraints.maxWidth;
-                maxHeight = constraints.maxHeight;
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onScaleStart: _handleScaleStart,
-                  onScaleUpdate: _handleScaleUpdate,
-                  onTapDown: (TapDownDetails details) =>
-                      onViewFinderTap(details, constraints),
-                  child: customPaint!,
-                );
-              }),
+                    maxWidth = constraints.maxWidth;
+                    maxHeight = constraints.maxHeight;
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onScaleStart: _handleScaleStart,
+                      onScaleUpdate: _handleScaleUpdate,
+                      onTapDown: (TapDownDetails details) =>
+                          onViewFinderTap(details, constraints),
+                      child: customPaint!,
+                    );
+                  }),
           ],
         ),
       );
@@ -212,17 +197,37 @@ class ScalableOCRState extends State<ScalableOCR> {
   // Start camera stream function
   Future startLiveFeed() async {
     _cameras = await availableCameras();
-    _controller = CameraController(_cameras[0], ResolutionPreset.max);
-    final camera = _cameras[0];
+    _controller = CameraController(
+        _cameras[widget.cameraSelection], ResolutionPreset.max);
+    final camera = _cameras[widget.cameraSelection];
     _controller = CameraController(
       camera,
       ResolutionPreset.high,
       enableAudio: false,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21 // for Android
+          : ImageFormatGroup.bgra8888, // for iOS
     );
     _controller?.initialize().then((_) {
       if (!mounted) {
         return;
       }
+      if (widget.lockCamera == true) {
+        _controller?.lockCaptureOrientation();
+      } else {
+        _controller?.unlockCaptureOrientation();
+      }
+
+      if (_controller != null) {
+        if (widget.torchOn != null) {
+          if (widget.torchOn == true) {
+            _controller!.setFlashMode(FlashMode.torch);
+          } else {
+            _controller!.setFlashMode(FlashMode.off);
+          }
+        }
+      }
+
       _controller?.getMinZoomLevel().then((value) {
         zoomLevel = value;
         minZoomLevel = value;
@@ -247,6 +252,12 @@ class ScalableOCRState extends State<ScalableOCR> {
   }
 
   // Process image from camera stream
+  final _orientations = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
   Future _processCameraImage(CameraImage image) async {
     final WriteBuffer allBytes = WriteBuffer();
     for (final Plane plane in image.planes) {
@@ -255,27 +266,51 @@ class ScalableOCRState extends State<ScalableOCR> {
     final bytes = allBytes.done().buffer.asUint8List();
 
     final Size imageSize =
-        Size(image.width.toDouble(), image.height.toDouble());
+    Size(image.width.toDouble(), image.height.toDouble());
 
     final camera = _cameras[0];
-    final imageRotation =
-        InputImageRotationValue.fromRawValue(camera.sensorOrientation);
-    if (imageRotation == null) return;
 
-    final inputImageFormat =
-        InputImageFormatValue.fromRawValue(image.format.raw);
-    if (inputImageFormat == null) return;
+    final sensorOrientation = camera.sensorOrientation;
+    InputImageRotation? imageRotation;
+    if (Platform.isIOS) {
+      imageRotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+    } else if (Platform.isAndroid) {
+      var rotationCompensation = _orientations[_controller!.value.deviceOrientation];
+      if (rotationCompensation == null) return null;
+      if (camera.lensDirection == CameraLensDirection.front) {
+        // front-facing
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+      } else {
+        // back-facing
+        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
+      }
+      imageRotation = InputImageRotationValue.fromRawValue(rotationCompensation);
+    }
+    if (imageRotation == null) return null;
+
+    // get image format
+    final imageFormat = InputImageFormatValue.fromRawValue(image.format.raw);
+    // validate format depending on platform
+    // only supported formats:
+    // * nv21 for Android
+    // * bgra8888 for iOS
+    if (imageFormat == null ||
+        (Platform.isAndroid && imageFormat != InputImageFormat.nv21) ||
+        (Platform.isIOS && imageFormat != InputImageFormat.bgra8888)) return null;
+
+    // since format is constraint to nv21 or bgra8888, both only have one plane
+    if (image.planes.length != 1) return null;
 
     final planeData = InputImageMetadata(
       size: imageSize,
       rotation: imageRotation,
-      format: inputImageFormat,
+      format: imageFormat,
       bytesPerRow: image.planes[0].bytesPerRow,
     );
 
     final inputImage =
-        // InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
-        InputImage.fromBytes(bytes: bytes, metadata: planeData);
+    // InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
+    InputImage.fromBytes(bytes: bytes, metadata: planeData);
 
     processImage(inputImage);
   }
@@ -315,7 +350,7 @@ class ScalableOCRState extends State<ScalableOCR> {
   }
 
   // Stop camera live stream
-  Future _stopLiveFeed() async {
+  Future stopLiveFeed() async {
     await _controller?.stopImageStream();
     await _controller?.dispose();
     _controller = null;
@@ -332,7 +367,7 @@ class ScalableOCRState extends State<ScalableOCR> {
         inputImage.metadata?.rotation != null &&
         cameraPrev.currentContext != null) {
       final RenderBox renderBox =
-          cameraPrev.currentContext?.findRenderObject() as RenderBox;
+      cameraPrev.currentContext?.findRenderObject() as RenderBox;
 
       var painter = TextRecognizerPainter(
           recognizedText,
@@ -340,7 +375,7 @@ class ScalableOCRState extends State<ScalableOCR> {
           inputImage.metadata!.rotation,
           renderBox, (value) {
         widget.getScannedText(value);
-      }, isLiveFeed: _isLiveFeed, getRawData: (value) {
+      }, getRawData: (value) {
         if (widget.getRawData != null) {
           widget.getRawData!(value);
         }
@@ -365,12 +400,4 @@ class ScalableOCRState extends State<ScalableOCR> {
       }
     });
   }
-}
-
-enum LangageScript{
-  latin,
-  chinese,
-  devanagiri,
-  japanese,
-  korean,
 }

@@ -14,9 +14,7 @@ class TextRecognizerPainter extends CustomPainter {
         this.boxRightOff = 4,
         this.boxTopOff = 2,
         this.getRawData,
-        this.paintboxCustom,
-        required this.isLiveFeed
-      });
+        this.paintboxCustom});
 
   /// ML kit recognizer
   final RecognizedText recognizedText;
@@ -53,9 +51,6 @@ class TextRecognizerPainter extends CustomPainter {
 
   /// Narower box paint
   final Paint? paintboxCustom;
-
-  final bool isLiveFeed;
-
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -98,10 +93,11 @@ class TextRecognizerPainter extends CustomPainter {
         size,
         absoluteImageSize);
 
-    final Paint paintbox = paintboxCustom ?? (Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = const Color.fromARGB(153, 102, 160, 241));
+    final Paint paintbox = paintboxCustom ??
+        (Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..color = const Color.fromARGB(153, 102, 160, 241));
     canvas.drawRect(
       Rect.fromLTRB(boxLeft, boxTop, boxRight, boxBottom),
       paintbox,
@@ -133,7 +129,7 @@ class TextRecognizerPainter extends CustomPainter {
             );
             builder.pushStyle(
                 ui.TextStyle(color: Colors.white, background: background));
-            if(isLiveFeed) builder.addText(parsedText);
+            builder.addText(parsedText);
             builder.pop();
 
             canvas.drawParagraph(
